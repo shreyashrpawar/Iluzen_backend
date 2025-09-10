@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Server;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 
 class ServerController extends Controller{
@@ -32,6 +33,25 @@ class ServerController extends Controller{
             'servers' => $servers,
         ]);
     }
+    public function getRequests(Request $request,$subdomain){
+        // $user = auth()->user();
+        $requests=DB::select("SELECT * FROM requests WHERE server_id IN (SELECT id FROM servers WHERE subdomain = ?)", [$subdomain]);
+        Log::info($requests);
+        return response()->json([
+            'requests' => $requests,
+        ]);
+    }
+    public function createRequest(Request $request,$subdomain){
+        Log::info($request);
+        $response = json_encode($request->response);
+        $server_id=DB::select("SELECT id FROM servers WHERE subdomain = ?", [$subdomain]);
+        Log::info($response);
+        DB::insert('insert into requests (name,server_id,url,type,response) values (?, ?,?,?,?)', [$request->name,$server_id[0]->id,$request->url,$request->type,$response]);
+        return response()->json([
+            'message' => 'Request created successfully.'
+        ]);
+    }
+
     public function deleteServer(Request $request, $id){
         $server = Server::find($id);
         if (!$server || $server->user_id !== auth()->id()) {
