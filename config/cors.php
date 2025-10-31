@@ -4,7 +4,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://127.0.0.1:3000','http://localhost:3000'], // 👈 Your Next.js frontend
+    'allowed_origins' => ['https://ilusion.io'], // 👈 Your Next.js frontend
 
     'allowed_origins_patterns' => [],
 
