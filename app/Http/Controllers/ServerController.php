@@ -35,8 +35,12 @@ class ServerController extends Controller{
     }
     public function getRequests(Request $request,$subdomain){
         // $user = auth()->user();
-        $requests=DB::select("SELECT * FROM requests WHERE server_id IN (SELECT id FROM servers WHERE subdomain = ?)", [$subdomain]);
-        Log::info($requests);
+        $requests=\App\Models\Request::whereIn('server_id', function ($query) use ($subdomain) {
+    $query->select('id')
+          ->from('servers')
+          ->where('subdomain', $subdomain);
+})->get();
+        // Log::info($requests);
         return response()->json([
             'requests' => $requests,
         ]);
