@@ -47,8 +47,6 @@ class ServerController extends Controller{
         ]);
     }
     public function createRequest(Request $request,$subdomain){
-    $response = json_encode($request->response);
-
     $server = Server::where('subdomain', $subdomain)->firstOrFail();
 
     $newRequest = new RequestModel();
@@ -56,7 +54,7 @@ class ServerController extends Controller{
     $newRequest->server_id = $server->id;
     $newRequest->url = $request->url;
     $newRequest->type = $request->type;
-    $newRequest->response = $response;
+    $newRequest->response = $request->response;
     $newRequest->save();
 
     return response()->json([
