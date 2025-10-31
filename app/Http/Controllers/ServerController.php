@@ -48,9 +48,15 @@ class ServerController extends Controller{
     public function createRequest(Request $request,$subdomain){
         Log::info($request);
         $response = json_encode($request->response);
-        $server_id=DB::select("SELECT id FROM servers WHERE subdomain = ?", [$subdomain]);
-        Log::info($response);
-        DB::insert('insert into requests (name,server_id,url,type,response) values (?, ?,?,?,?)', [$request->name,$server_id[0]->id,$request->url,$request->type,$response]);
+        $server_id=\App\Models\Server::where('subdomain', $subdomain)->firstOrFail();
+        // DB::insert('insert into requests (name,server_id,url,type,response) values (?, ?,?,?,?)', [$request->name,$server_id[0]->id,$request->url,$request->type,$response]);
+        $requestModel = new \App\Models\Request();
+        $requestModel->name = $request->name;
+        $requestModel->server_id = $server_id->id;
+        $requestModel->url = $request->url;
+        $requestModel->type = $request->type;
+        $requestModel->response = $response;
+        $requestModel->save();
         return response()->json([
             'message' => 'Request created successfully.'
         ]);
