@@ -36,7 +36,8 @@ class ServerController extends Controller{
     }
     public function getRequests(Request $request,$subdomain){
         // $user = auth()->user();
-        $requests=\App\Models\Request::whereIn('server_id', function ($query) use ($subdomain) {
+        if (Server::where('subdomain', $subdomain)->exists()) {
+            $requests=\App\Models\Request::whereIn('server_id', function ($query) use ($subdomain) {
     $query->select('id')
           ->from('servers')
           ->where('subdomain', $subdomain);
@@ -45,6 +46,13 @@ class ServerController extends Controller{
         return response()->json([
             'requests' => $requests,
         ]);
+
+} else {
+    return response()->json([
+        'message' => 'Server not found.',
+    ], 404);
+}
+
     }
     public function createRequest(Request $request,$subdomain){
     $server = Server::where('subdomain', $subdomain)->firstOrFail();
@@ -61,8 +69,29 @@ class ServerController extends Controller{
         'message' => 'Request created successfully.'
     ]);    }
 
-    public function deleteServer(Request $request, $id){
-        $server = Server::find($id);
+        public function deleteRequests(Request $request,$subdomain){
+                // $user = auth()->user();
+                $server_id=Server::where('subdomain', $subdomain)->first()->id;
+                $delete=\App\Models\Request::where([
+    ['server_id', $server_id],
+    ['id', $request->id]
+])->delete();
+
+        //         $requests=\App\Models\Request::where(['server_id', function ($query) use ($subdomain) {
+        //     $query->select('id')
+        //         ->from('servers')
+        //         ->where('subdomain', $subdomain);
+        // },'url',])->get();
+                // Log::info($requests);
+                return response()->json([
+                    'message' => 'Requests deleted successfully.',
+                ]);
+    }
+
+
+    public function deleteServer(Request $request){
+        $server = Server::find($request->id);
+        $requests = RequestModel::where('server_id', $server->id)->delete();
         if (!$server || $server->user_id !== auth()->id()) {
             return response()->json(['message' => 'Server not found or unauthorized.'], 404);
         }
