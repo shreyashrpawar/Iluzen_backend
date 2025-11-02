@@ -68,35 +68,78 @@ public function getTable(Request $request, $database)
 
 public function createTable(Request $request, $database)
 {
-    $user = auth()->user();
-    DB::statement('USE ' . $database);
-    $tableName = $request->name;
-    if (!$tableName) {
-        return response()->json(['error' => 'Table name is required'], 400);
-    }
-    $createTableQuery = "CREATE TABLE `" . $tableName . "` (id INT AUTO_INCREMENT PRIMARY KEY";
-    foreach ($request->columns as $column) {
-        $name = $column['name'];
-        $type = strtoupper(trim($column['type']));
-        $length = isset($column['length']) && $column['length'] ? "(" . intval($column['length']) . ")" : "";
-        if (!$name || !$type) continue;
+    try {
+        $user = auth()->user();
 
-        $createTableQuery .= ", `" . $name . "` " . $type . $length;
-        if (!empty($column['nullable']) && $column['nullable'] === false) {
-            $createTableQuery .= " NOT NULL";
+        // 1️⃣ Validate inputs
+        $validated = $request->validate([
+            'name' => 'required|string|regex:/^[A-Za-z0-9_]+$/',
+            'columns' => 'required|array|min:1',
+            'columns.*.name' => 'required|string|regex:/^[A-Za-z0-9_]+$/',
+            'columns.*.type' => 'required|string',
+            'columns.*.length' => 'nullable|integer|min:1',
+            'columns.*.nullable' => 'nullable|boolean',
+            'columns.*.default' => 'nullable',
+        ]);
+
+        $tableName = $validated['name'];
+        $columns = $validated['columns'];
+
+        // 2️⃣ Switch to selected DB safely
+        DB::statement('USE `' . str_replace('`', '``', $database) . '`');
+
+        // 3️⃣ Start building CREATE TABLE query
+        $queryParts = [];
+        $queryParts[] = "`id` INT AUTO_INCREMENT PRIMARY KEY";
+
+        foreach ($columns as $col) {
+            $name = "`" . str_replace('`', '``', $col['name']) . "`";
+            $type = strtoupper($col['type']);
+            $length = isset($col['length']) ? "({$col['length']})" : "";
+
+            // Build the column definition
+            $definition = "{$name} {$type}{$length}";
+
+            // Handle NOT NULL
+            if (isset($col['nullable']) && $col['nullable'] === false) {
+                $definition .= " NOT NULL";
+            }
+
+            // Handle DEFAULT value
+            if (isset($col['default']) && $col['default'] !== null && $col['default'] !== '') {
+                $safeDefault = addslashes($col['default']);
+                $definition .= " DEFAULT '{$safeDefault}'";
+            }
+
+            $queryParts[] = $definition;
         }
-        if (!empty($column['default'])) {
-            $createTableQuery .= " DEFAULT '" . addslashes($column['default']) . "'";
-        }
+
+        // Combine into final CREATE TABLE query
+        $createTableQuery = "CREATE TABLE `{$tableName}` (" . implode(', ', $queryParts) . ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
+        Log::info("Executing query: " . $createTableQuery);
+
+        // 4️⃣ Execute safely
+        DB::statement($createTableQuery);
+
+        return response()->json(['message' => 'Table created successfully.'], 200);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        // Input validation errors
+        return response()->json(['error' => $e->errors()], 422);
+
+    } catch (\Illuminate\Database\QueryException $e) {
+        // SQL or DB errors
+        Log::error('Create table failed: ' . $e->getMessage());
+        return response()->json(['error' => 'Database error: ' . $e->getMessage()], 500);
+
+    } catch (\Exception $e) {
+        // Other exceptions
+        Log::error('Unexpected error: ' . $e->getMessage());
+        return response()->json(['error' => 'Unexpected server error.'], 500);
     }
-
-    $createTableQuery .= ")";
-    Log::info("Executing query: " . $createTableQuery);
-
-    DB::statement($createTableQuery);
-
-    return response()->json(['message' => 'Table created successfully.']);
 }
+
 
 //         public function deleteRequests(Request $request,$subdomain){
 //                 // $user = auth()->user();
