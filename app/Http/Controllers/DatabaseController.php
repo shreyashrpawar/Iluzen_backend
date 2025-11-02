@@ -41,11 +41,19 @@ public function getTable(Request $request, $database)
 
     if (count($exists) > 0) {
         // Fetch all tables in that database
-        $tables = DB::select("SHOW TABLES FROM `$database`");
+    DB::statement("USE `$database`");
 
-        return response()->json([
-            'tables' => $tables,
-        ]);
+    // Get all tables
+    $tables = DB::select("SHOW TABLES FROM `$database`");
+
+    // Extract only table names (since MySQL key is dynamic like 'Tables_in_<db>')
+    $tableList = collect($tables)->map(function ($table) {
+        return array_values((array) $table)[0];
+    });
+
+    return response()->json([
+        'tables' => $tableList
+    ]);
     } else {
         return response()->json([
             'message' => 'Database not found or access denied.',
@@ -53,20 +61,37 @@ public function getTable(Request $request, $database)
     }
 }
 
-//     public function createRequest(Request $request,$subdomain){
-//     $server = Server::where('subdomain', $subdomain)->firstOrFail();
+public function createTable(Request $request, $database)
+{
+    $user = auth()->user();
+    DB::statement('USE ' . $database);
+    $tableName = $request->name;
+    if (!$tableName) {
+        return response()->json(['error' => 'Table name is required'], 400);
+    }
+    $createTableQuery = "CREATE TABLE `" . $tableName . "` (id INT AUTO_INCREMENT PRIMARY KEY";
+    foreach ($request->columns as $column) {
+        $name = $column['name'];
+        $type = strtoupper(trim($column['type']));
+        $length = isset($column['length']) && $column['length'] ? "(" . intval($column['length']) . ")" : "";
+        if (!$name || !$type) continue;
 
-//     $newRequest = new RequestModel();
-//     $newRequest->name = $request->name;
-//     $newRequest->server_id = $server->id;
-//     $newRequest->url = $request->url;
-//     $newRequest->type = $request->type;
-//     $newRequest->response = $request->response;
-//     $newRequest->save();
+        $createTableQuery .= ", `" . $name . "` " . $type . $length;
+        if (!empty($column['nullable']) && $column['nullable'] === false) {
+            $createTableQuery .= " NOT NULL";
+        }
+        if (!empty($column['default'])) {
+            $createTableQuery .= " DEFAULT '" . addslashes($column['default']) . "'";
+        }
+    }
 
-//     return response()->json([
-//         'message' => 'Request created successfully.'
-//     ]);    }
+    $createTableQuery .= ")";
+    Log::info("Executing query: " . $createTableQuery);
+
+    DB::statement($createTableQuery);
+
+    return response()->json(['message' => 'Table created successfully.']);
+}
 
 //         public function deleteRequests(Request $request,$subdomain){
 //                 // $user = auth()->user();
