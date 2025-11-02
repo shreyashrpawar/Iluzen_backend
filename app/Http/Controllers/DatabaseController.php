@@ -71,7 +71,6 @@ public function createTable(Request $request, $database)
     try {
         $user = auth()->user();
 
-        // 1️⃣ Validate inputs
         $validated = $request->validate([
             'name' => 'required|string|regex:/^[A-Za-z0-9_]+$/',
             'columns' => 'required|array|min:1',
@@ -85,10 +84,8 @@ public function createTable(Request $request, $database)
         $tableName = $validated['name'];
         $columns = $validated['columns'];
 
-        // 2️⃣ Switch to selected DB safely
         DB::statement('USE `' . str_replace('`', '``', $database) . '`');
 
-        // 3️⃣ Start building CREATE TABLE query
         $queryParts = [];
         $queryParts[] = "`id` INT AUTO_INCREMENT PRIMARY KEY";
 
@@ -97,15 +94,12 @@ public function createTable(Request $request, $database)
             $type = strtoupper($col['type']);
             $length = isset($col['length']) ? "({$col['length']})" : "";
 
-            // Build the column definition
             $definition = "{$name} {$type}{$length}";
 
-            // Handle NOT NULL
             if (isset($col['nullable']) && $col['nullable'] === false) {
                 $definition .= " NOT NULL";
             }
 
-            // Handle DEFAULT value
             if (isset($col['default']) && $col['default'] !== null && $col['default'] !== '') {
                 $safeDefault = addslashes($col['default']);
                 $definition .= " DEFAULT '{$safeDefault}'";
@@ -114,12 +108,10 @@ public function createTable(Request $request, $database)
             $queryParts[] = $definition;
         }
 
-        // Combine into final CREATE TABLE query
         $createTableQuery = "CREATE TABLE `{$tableName}` (" . implode(', ', $queryParts) . ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
 
         Log::info("Executing query: " . $createTableQuery);
 
-        // 4️⃣ Execute safely
         DB::statement($createTableQuery);
 
         return response()->json(['message' => 'Table created successfully.'], 200);
