@@ -108,7 +108,10 @@ public function createTable(Request $request, $database)
             $queryParts[] = $definition;
         }
 
-        $createTableQuery = "CREATE TABLE `{$tableName}` (" . implode(', ', $queryParts) . ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+$createTableQuery = "CREATE TABLE `{$database}`.`{$tableName}` (" 
+    . implode(', ', $queryParts) 
+    . ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
 
         Log::info("Executing query: " . $createTableQuery);
 
