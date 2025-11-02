@@ -76,13 +76,6 @@ class ServerController extends Controller{
     ['server_id', $server_id],
     ['id', $request->id]
 ])->delete();
-
-        //         $requests=\App\Models\Request::where(['server_id', function ($query) use ($subdomain) {
-        //     $query->select('id')
-        //         ->from('servers')
-        //         ->where('subdomain', $subdomain);
-        // },'url',])->get();
-                // Log::info($requests);
                 return response()->json([
                     'message' => 'Requests deleted successfully.',
                 ]);
