@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Models\Server;
 use App\Models\Request as RequestModel;
-
+use App\Models\UserDatabase;
 
 class DatabaseController extends Controller{
     public function createDatabase(Request $request){
@@ -16,6 +16,11 @@ class DatabaseController extends Controller{
         DB::statement('CREATE DATABASE ' . $request->database_name);
         DB::statement("CREATE USER IF NOT EXISTS'" . $user->name . "'@'%' IDENTIFIED BY '" . $request->password . "'");
         $authorize=DB::statement("GRANT ALL PRIVILEGES ON " . $request->database_name . ".* TO '" . $user->name . "'@'%'");
+        UserDatabase::create([
+            'user_id' => auth()->id(),
+            'database_name' => $request->database_name,
+        ]);
+
         return response()->json([
             'message' => 'Database created successfully.',
         ]);
@@ -33,11 +38,10 @@ public function getTable(Request $request, $database)
     $user = auth()->user();
     Log::info($database);
     // Check if this user has access to that database
-    $exists = DB::select("
-        SELECT DISTINCT Db AS database_name 
-        FROM mysql.db 
-        WHERE User = ? AND Db = ?
-    ", [$user->name, $database]);
+    $exists = UserDatabase::where([
+        ['user_id', $user->id],
+        ['database_name', $database],
+    ])->get();
 
     if (count($exists) > 0) {
         // Fetch all tables in that database
