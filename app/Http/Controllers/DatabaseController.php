@@ -38,12 +38,12 @@ public function getTable(Request $request, $database)
     $user = auth()->user();
     Log::info($database);
     // Check if this user has access to that database
-    $exists = UserDatabase::where([
-        ['user_id', $user->id],
-        ['database_name', $database],
-    ])->get();
+$exists = UserDatabase::where('user_id', $user->id)
+    ->where('database_name', $database)
+    ->exists();
 
-    if (count($exists) > 0) {
+
+    if ($exists) {
         // Fetch all tables in that database
     DB::statement("USE `$database`");
 
