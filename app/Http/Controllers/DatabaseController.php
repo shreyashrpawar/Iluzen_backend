@@ -38,12 +38,12 @@ public function getTable(Request $request, $database)
     $user = auth()->user();
     Log::info($database);
     // Check if this user has access to that database
-// $exists = UserDatabase::where('user_id', $user->id)
-//     ->where('database_name', $database)
-//     ->exists();
+$exists = UserDatabase::where('user_id', $user->id)
+    ->where('database_name', $database)
+    ->exists();
 
 
-    // if ($exists) {
+    if ($exists) {
         // Fetch all tables in that database
     DB::statement("USE `$database`");
 
@@ -58,12 +58,11 @@ public function getTable(Request $request, $database)
     return response()->json([
         'tables' => $tableList
     ]);
-    // } 
-    // else {
-    //     return response()->json([
-    //         'message' => 'Database not found or access denied.',
-    //     ], 404);
-    // }
+    } else {
+        return response()->json([
+            'message' => 'Database not found or access denied.',
+        ], 404);
+    }
 }
 
 public function createTable(Request $request, $database)
