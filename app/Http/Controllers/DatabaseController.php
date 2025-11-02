@@ -36,34 +36,35 @@ class DatabaseController extends Controller{
 public function getTable(Request $request, $database)
 {
     $user = auth()->user();
-    Log::info($database);
-    // Check if this user has access to that database
-$exists = UserDatabase::where('user_id', $user->id)
-    ->where('database_name', $database)
-    ->exists();
+    $database = trim(strtolower($database));
 
+    // Check if user has access to the database
+    $hasAccess = UserDatabase::where('user_id', $user->id)
+        ->where('database_name', $database)
+        ->exists();
 
-    if ($exists) {
-        // Fetch all tables in that database
-    DB::statement("USE `$database`");
+    if ($hasAccess) {
+        // Switch to that DB
+        DB::statement("USE `$database`");
 
-    // Get all tables
-    $tables = DB::select("SHOW TABLES FROM `$database`");
+        // Fetch all tables
+        $tables = DB::select("SHOW TABLES FROM `$database`");
 
-    // Extract only table names (since MySQL key is dynamic like 'Tables_in_<db>')
-    $tableList = collect($tables)->map(function ($table) {
-        return array_values((array) $table)[0];
-    });
+        // Clean up output
+        $tableList = collect($tables)->map(function ($table) {
+            return array_values((array) $table)[0];
+        });
+
+        return response()->json([
+            'tables' => $tableList,
+        ]);
+    }
 
     return response()->json([
-        'tables' => $tableList
-    ]);
-    } else {
-        return response()->json([
-            'message' => 'Database not found or access denied.',
-        ], 404);
-    }
+        'message' => 'Database not found or access denied.',
+    ], 404);
 }
+
 
 public function createTable(Request $request, $database)
 {
