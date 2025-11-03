@@ -21,6 +21,16 @@ Route::get('/get_database/{database}', [DatabaseController::class, 'getTable'])-
 Route::get('/get_databases', [DatabaseController::class, 'getDatabases'])->middleware('auth:sanctum');
 Route::post('/create_table/{subdomain}', [DatabaseController::class, 'createTable'])->middleware('auth:sanctum');
 
+
+Route::post('/delete_table/{database}', [DatabaseController::class, 'deleteTable'])->middleware('auth:sanctum');
+Route::get('/get_table_columns/{database}/{table}', [DatabaseController::class, 'getTableColumns'])->middleware('auth:sanctum');
+
+    // Data management
+    Route::post('/insert_data/{database}/{table}', [DatabaseController::class, 'insertData'])->middleware('auth:sanctum');
+    Route::get('/get_table_data/{database}/{table}', [DatabaseController::class, 'getTableData'])->middleware('auth:sanctum');
+    Route::post('/delete_data/{database}/{table}', [DatabaseController::class, 'deleteData'])->middleware('auth:sanctum');
+
+
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');

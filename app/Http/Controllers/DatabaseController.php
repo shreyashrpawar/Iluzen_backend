@@ -134,6 +134,212 @@ $createTableQuery = "CREATE TABLE `{$database}`.`{$tableName}` ("
         return response()->json(['error' => 'Unexpected server error.'], 500);
     }
 }
+    public function getTableColumns(Request $request, $database, $table)
+    {
+        try {
+            $user = auth()->user();
+            $database = trim(strtolower($database));
+            $table = trim($table);
+
+            // Check access
+            $hasAccess = UserDatabase::where('user_id', $user->id)
+                ->where('database_name', $database)
+                ->exists();
+
+            if (!$hasAccess) {
+                return response()->json(['message' => 'Access denied.'], 403);
+            }
+
+            DB::statement("USE `$database`");
+
+            // Get column information
+            $columns = DB::select("DESCRIBE `$table`");
+
+            // Format column data
+            $formattedColumns = collect($columns)->map(function ($col) {
+                return [
+                    'name' => $col->Field,
+                    'type' => $col->Type,
+                    'nullable' => $col->Null === 'YES',
+                    'key' => $col->Key,
+                    'default' => $col->Default,
+                    'extra' => $col->Extra
+                ];
+            });
+
+            return response()->json([
+                'columns' => $formattedColumns,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Get table columns failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch columns.'], 500);
+        }
+    }
+    public function deleteTable(Request $request, $database)
+    {
+        try {
+            $user = auth()->user();
+            $database = trim(strtolower($database));
+
+            // Check access
+            $hasAccess = UserDatabase::where('user_id', $user->id)
+                ->where('database_name', $database)
+                ->exists();
+
+            if (!$hasAccess) {
+                return response()->json(['message' => 'Access denied.'], 403);
+            }
+
+            $validated = $request->validate([
+                'name' => 'required|string|regex:/^[A-Za-z0-9_]+$/',
+            ]);
+
+            $tableName = str_replace('`', '``', $validated['name']);
+
+            DB::statement("USE `$database`");
+            DB::statement("DROP TABLE IF EXISTS `$tableName`");
+
+            return response()->json(['message' => 'Table deleted successfully.'], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Delete table failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to delete table.'], 500);
+        }
+    }
+    public function insertData(Request $request, $database, $table)
+    {
+        try {
+            $user = auth()->user();
+            $database = trim(strtolower($database));
+            $table = trim($table);
+
+            // Check access
+            $hasAccess = UserDatabase::where('user_id', $user->id)
+                ->where('database_name', $database)
+                ->exists();
+
+            if (!$hasAccess) {
+                return response()->json(['message' => 'Access denied.'], 403);
+            }
+
+            $validated = $request->validate([
+                'data' => 'required|array',
+            ]);
+
+            $data = $validated['data'];
+
+            // Remove empty values and 'id' if present
+            $data = array_filter($data, function($value, $key) {
+                return $key !== 'id' && $value !== '' && $value !== null;
+            }, ARRAY_FILTER_USE_BOTH);
+
+            if (empty($data)) {
+                return response()->json(['error' => 'No valid data to insert.'], 422);
+            }
+
+            DB::statement("USE `$database`");
+
+            // Prepare column names and values
+            $columns = array_keys($data);
+            $values = array_values($data);
+
+            $columnList = implode('`, `', array_map(function($col) {
+                return str_replace('`', '``', $col);
+            }, $columns));
+
+            $placeholders = implode(', ', array_fill(0, count($values), '?'));
+
+            $query = "INSERT INTO `$table` (`$columnList`) VALUES ($placeholders)";
+
+            Log::info("Insert query: " . $query, ['values' => $values]);
+
+            DB::insert($query, $values);
+
+            return response()->json(['message' => 'Data inserted successfully.'], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['error' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            Log::error('Insert data failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to insert data: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getTableData(Request $request, $database, $table)
+    {
+        try {
+            $user = auth()->user();
+            $database = trim(strtolower($database));
+            $table = trim($table);
+
+            // Check access
+            $hasAccess = UserDatabase::where('user_id', $user->id)
+                ->where('database_name', $database)
+                ->exists();
+
+            if (!$hasAccess) {
+                return response()->json(['message' => 'Access denied.'], 403);
+            }
+
+            DB::statement("USE `$database`");
+
+            // Get all data from table
+            $data = DB::select("SELECT * FROM `$table`");
+
+            // Get column information
+            $columns = DB::select("DESCRIBE `$table`");
+
+            return response()->json([
+                'data' => $data,
+                'columns' => collect($columns)->map(function ($col) {
+                    return [
+                        'name' => $col->Field,
+                        'type' => $col->Type,
+                    ];
+                }),
+                'total' => count($data),
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Get table data failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch data.'], 500);
+        }
+    }
+
+    public function deleteData(Request $request, $database, $table)
+    {
+        try {
+            $user = auth()->user();
+            $database = trim(strtolower($database));
+            $table = trim($table);
+
+            // Check access
+            $hasAccess = UserDatabase::where('user_id', $user->id)
+                ->where('database_name', $database)
+                ->exists();
+
+            if (!$hasAccess) {
+                return response()->json(['message' => 'Access denied.'], 403);
+            }
+
+            $validated = $request->validate([
+                'id' => 'required|integer',
+            ]);
+
+            DB::statement("USE `$database`");
+
+            $id = $validated['id'];
+            DB::delete("DELETE FROM `$table` WHERE `id` = ?", [$id]);
+
+            return response()->json(['message' => 'Data deleted successfully.'], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Delete data failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to delete data.'], 500);
+        }
+    }
+
 
 
 //         public function deleteRequests(Request $request,$subdomain){
