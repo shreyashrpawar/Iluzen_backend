@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\DatabaseController;
+use App\Http\Controllers\NoauthDatabase;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -17,9 +18,14 @@ Route::post('/get_server/{subdomain}', [ServerController::class, 'createRequest'
 Route::post('/delete_request/{subdomain}', [ServerController::class, 'deleteRequests'])->middleware('auth:sanctum');
 
 Route::post('/create_database', [DatabaseController::class, 'createDatabase'])->middleware('auth:sanctum');
+Route::post('/connect_remote_database', [DatabaseController::class, 'connectRemoteDatabase'])->middleware('auth:sanctum');
 Route::get('/get_database/{database}', [DatabaseController::class, 'getTable'])->middleware('auth:sanctum');
 Route::get('/get_databases', [DatabaseController::class, 'getDatabases'])->middleware('auth:sanctum');
 Route::post('/create_table/{subdomain}', [DatabaseController::class, 'createTable'])->middleware('auth:sanctum');
+
+//For non-auth page
+Route::post('/connect-remote-db', [NoauthDatabase::class, 'connectRemoteDatabaseNoAuth']);
+Route::post('get-remote-table-data',[NoauthDatabase::class, 'getRemoteTableDataNoAuth']);
 
 
 Route::post('/delete_table/{database}', [DatabaseController::class, 'deleteTable'])->middleware('auth:sanctum');

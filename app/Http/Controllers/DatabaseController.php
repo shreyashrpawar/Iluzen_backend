@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Server;
 use App\Models\Request as RequestModel;
 use App\Models\UserDatabase;
+use App\Models\RemoteDatabase;
 
 class DatabaseController extends Controller{
     public function createDatabase(Request $request){
@@ -340,7 +341,37 @@ $createTableQuery = "CREATE TABLE `{$database}`.`{$tableName}` ("
         }
     }
 
-
+public function connectRemoteDatabase(Request $request){
+    $user = auth()->user();
+    RemoteDatabase::create([
+        'user_id' => auth()->id(),
+        'database_host' => $request->host,
+        'database_name' => $request->database_name,
+        'user_name' => $request->username,
+        'user_password' => $request->password,
+    ]);
+    $config=[
+        'driver'    => 'mysql',
+        'host'      => $request->host,
+        'database'  => $request->database_name,
+        'username'  => $request->username,
+        'password'  => $request->password,
+        'charset'   => 'utf8mb4',
+        'collation' => 'utf8mb4_unicode_ci',
+        'prefix'    => '',
+    ];
+    config(['database.connections.remote_connection' => $config]);
+    try{
+        $pdo=DB::connection('remote_connection')->getPdo();
+    }catch(\Exception $e){
+        return response()->json([
+            'message' => 'Connection to remote database failed: '.$e->getMessage(),
+        ],500); 
+    }
+    return response()->json([
+        'message' => 'Connected to remote database successfully.',
+    ]);
+}
 
 //         public function deleteRequests(Request $request,$subdomain){
 //                 // $user = auth()->user();
