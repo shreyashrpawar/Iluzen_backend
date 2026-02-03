@@ -91,4 +91,70 @@ class ServerController extends Controller{
         $server->delete();
         return response()->json(['message' => 'Server deleted successfully.']);
     }
+
+    /**
+     * Handle dynamic subdomain requests
+     * Routes: {subdomain}.ilusion.one/{path} or /api/{subdomain}/{path}
+     * Finds server by subdomain, then request by path, returns response
+     */
+    public function handleSubdomainRequest(Request $request, $subdomain = null, $path = null){
+        // For localhost development: /api/{subdomain}/{path}
+        if ($subdomain === null) {
+            $segments = $request->segments();
+            if (!empty($segments) && $segments[0] === 'api' && !empty($segments[1])) {
+                $subdomain = $segments[1];
+                // Reconstruct path from remaining segments
+                $pathSegments = array_slice($segments, 2);
+                $path = !empty($pathSegments) ? '/' . implode('/', $pathSegments) : '/';
+            }
+        }
+
+        if (!$subdomain) {
+            return response()->json([
+                'message' => 'Subdomain not found in request.',
+            ], 400);
+        }
+
+        // Find server by subdomain
+        $server = Server::where('subdomain', $subdomain)->first();
+        
+        if (!$server) {
+            return response()->json([
+                'message' => "Server '{$subdomain}' not found.",
+            ], 404);
+        }
+
+        // Get the actual path for the mock request lookup
+        if ($path === null) {
+            $path = $request->path();
+            // Remove subdomain prefix if present
+            if (strpos($path, $subdomain) === 0) {
+                $path = substr($path, strlen($subdomain));
+            }
+        }
+        
+        $path = '/' . ltrim($path, '/');
+
+        // Find matching request by server_id and url path
+        $mockRequest = RequestModel::where([
+            ['server_id', $server->id],
+            ['url', $path]
+        ])->first();
+
+        if (!$mockRequest) {
+            return response()->json([
+                'message' => "Endpoint '{$path}' not found on server '{$subdomain}'.",
+                'available' => RequestModel::where('server_id', $server->id)
+                    ->pluck('url')
+                    ->toArray(),
+            ], 404);
+        }
+
+        // Decode and return the response
+        $responseData = is_string($mockRequest->response) 
+            ? json_decode($mockRequest->response, true) 
+            : $mockRequest->response;
+
+        return response()->json($responseData);
+    }
 }
