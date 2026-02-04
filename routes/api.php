@@ -55,6 +55,7 @@ Route::group([
 });
 
 // Local development fallback (for localhost testing)
-Route::any('/api/{subdomain}/{path?}', [ServerController::class, 'handleSubdomainRequest'])
+// Note: No /api prefix needed - Laravel adds it automatically for api.php routes
+Route::any('/{subdomain}/{path?}', [ServerController::class, 'handleSubdomainRequest'])
     ->where('path', '.*')
     ->name('mock-api-local');
