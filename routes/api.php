@@ -41,20 +41,7 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-/**
- * Dynamic subdomain routes for mock API servers
- * Matches: {subdomain}.ilusion.one/any/path
- * Also supports localhost in development: localhost:8000/subdomain/any/path
- */
-Route::group([
-    'domain' => '{subdomain}.ilusion.one'
-], function () {
-    Route::any('/{path?}', [ServerController::class, 'handleSubdomainRequest'])
-        ->where('path', '.*')
-        ->name('mock-api');
-});
-
-// Local development fallback (for localhost testing)
+// Local development fallback (for localhost testing via /api/{subdomain}/{path})
 // Note: No /api prefix needed - Laravel adds it automatically for api.php routes
 Route::any('/{subdomain}/{path?}', [ServerController::class, 'handleSubdomainRequest'])
     ->where('path', '.*')
