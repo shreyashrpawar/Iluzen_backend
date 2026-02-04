@@ -4,7 +4,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://ilusion.io','http://localhost:3000'], // 👈 Your Next.js frontend
+    'allowed_origins' => ['*'], // Allow all origins for subdomain mock API
 
     'allowed_origins_patterns' => [],
 
