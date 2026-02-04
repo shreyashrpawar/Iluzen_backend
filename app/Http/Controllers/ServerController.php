@@ -63,6 +63,9 @@ class ServerController extends Controller{
     $newRequest->url = $request->url;
     $newRequest->type = $request->type;
     $newRequest->response = $request->response;
+    $newRequest->response_type = $request->response_type ?? 'manual';
+    $newRequest->database_name = $request->database_name;
+    $newRequest->table_name = $request->table_name;
     $newRequest->save();
 
     return response()->json([
@@ -151,10 +154,36 @@ class ServerController extends Controller{
         }
 
         // Decode and return the response
-        $responseData = is_string($mockRequest->response) 
-            ? json_decode($mockRequest->response, true) 
-            : $mockRequest->response;
+        if ($mockRequest->response_type === 'database') {
+            // Database response: query the specified database and table
+            if (!$mockRequest->database_name || !$mockRequest->table_name) {
+                return response()->json([
+                    'message' => 'Database or table name not configured for this endpoint.',
+                ], 500);
+            }
 
-        return response()->json($responseData);
+            try {
+                $database = $mockRequest->database_name;
+                $table = $mockRequest->table_name;
+
+                // Switch to the database and fetch data
+                DB::statement("USE `$database`");
+                $data = DB::select("SELECT * FROM `$table`");
+
+                return response()->json($data);
+            } catch (\Exception $e) {
+                \Log::error("Database query failed: " . $e->getMessage());
+                return response()->json([
+                    'message' => 'Failed to query database: ' . $e->getMessage(),
+                ], 500);
+            }
+        } else {
+            // Manual JSON response (default behavior)
+            $responseData = is_string($mockRequest->response) 
+                ? json_decode($mockRequest->response, true) 
+                : $mockRequest->response;
+
+            return response()->json($responseData);
+        }
     }
 }

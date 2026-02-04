@@ -17,10 +17,13 @@ class Request extends Model
         'url',
         'type',
         'response',
+        'response_type',
+        'database_name',
+        'table_name',
     ];
 
     protected $casts = [
-        'response' => 'array', // because it's JSON
+        'response' => 'array', // Manual JSON responses
     ];
 
     /**
