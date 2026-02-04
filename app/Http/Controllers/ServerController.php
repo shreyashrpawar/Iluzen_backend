@@ -166,9 +166,9 @@ class ServerController extends Controller{
                 $database = $mockRequest->database_name;
                 $table = $mockRequest->table_name;
 
-                // Switch to the database and fetch data
-                DB::statement("USE `$database`");
-                $data = DB::select("SELECT * FROM `$table`");
+                // Use fully qualified table name instead of USE statement
+                // This prevents breaking Laravel's session management
+                $data = DB::select("SELECT * FROM `$database`.`$table`");
 
                 return response()->json($data);
             } catch (\Exception $e) {
