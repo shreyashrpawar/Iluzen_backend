@@ -21,6 +21,11 @@ Route::post('/create_database', [DatabaseController::class, 'createDatabase'])->
 Route::post('/connect_remote_database', [DatabaseController::class, 'connectRemoteDatabase'])->middleware('auth:sanctum');
 Route::get('/get_database/{database}', [DatabaseController::class, 'getTable'])->middleware('auth:sanctum');
 Route::get('/get_databases', [DatabaseController::class, 'getDatabases'])->middleware('auth:sanctum');
+
+// Routes for database response feature (used by frontend dropdowns)
+Route::get('/databases', [DatabaseController::class, 'getDatabases'])->middleware('auth:sanctum');
+Route::get('/tables/{database}', [DatabaseController::class, 'getTable'])->middleware('auth:sanctum');
+
 Route::post('/create_table/{subdomain}', [DatabaseController::class, 'createTable'])->middleware('auth:sanctum');
 
 //For non-auth page
